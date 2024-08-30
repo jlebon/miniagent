@@ -12,4 +12,5 @@ rendezvousMAC=52:54:00:93:72:25       # In case of SNO, this is also the host MA
 baseDomain=${network}.org
 domain=sno.${baseDomain}
 apiDomain=api.${domain}
-
+consoleDomain=console-openshift-console.apps.${domain}
+oauthDomain=oauth-openshift.apps.${domain}
