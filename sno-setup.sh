@@ -91,7 +91,7 @@ fi
 ###    and this will be required later by the wait-for command
 if ! $(grep "${apiDomain}" /etc/hosts &> /dev/null); then
   echo "* Adding entry to /etc/hosts"
-  echo "${rendezvousIP} ${apiDomain}" | sudo tee -a /etc/hosts
+  echo "${rendezvousIP} ${apiDomain} ${consoleDomain} ${oauthDomain}" | sudo tee -a /etc/hosts
 fi
 
 ### 6. Generate the install-config.yaml and agent-config.yaml.
