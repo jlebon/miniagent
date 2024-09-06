@@ -4,17 +4,21 @@ set -euo pipefail
 source "sno-common.sh"
 
 # Remove any existing mini-agent instance
-if $(sudo virsh list --all | grep "\s${hostname}\s" &> /dev/null); then
+if sudo virsh list --all --name | grep -q "${hostname}"; then
   echo "* Removing ${hostname} instance"
-  sudo virsh destroy ${hostname}
-  sudo virsh undefine ${hostname}
+  if sudo virsh list --name | grep -q "${hostname}"; then
+      sudo virsh destroy ${hostname}
+  fi
+  sudo virsh undefine ${hostname} --remove-all-storage
 fi
 
 # Remove the mini-agent network
-if $(sudo virsh net-list | grep ${network} &> /dev/null); then
-    echo "* Removing ${network} network"
-    sudo virsh net-destroy ${network}
-    sudo virsh net-undefine ${network}
+if sudo virsh net-list --all --name | grep -q ${network}; then
+  echo "* Removing ${network} network"
+  if sudo virsh net-list --name | grep -q ${network}; then
+      sudo virsh net-destroy ${network}
+  fi
+  sudo virsh net-undefine ${network}
 fi 
 
 # Cleanup the /etc/hosts file

@@ -172,7 +172,7 @@ sudo virt-install \
 
 
 ### 9. Check if the agent virtual machine is up and running
-while ! $(sudo virsh list --all | grep "\s${hostname}\s.*running" &> /dev/null); do
+while ! sudo virsh list --all | grep -q "\s${hostname}\s.*running"; do
   echo "Waiting for ${hostname} to start..."
   sleep 5
 done
