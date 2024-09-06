@@ -19,6 +19,16 @@ if [ $# -eq 2 ]; then
   pullSecretFile=$2
 fi
 
+if [ -e ~/.ssh/id_ed25519.pub ]; then
+  sshKeyFile=~/.ssh/id_ed25519.pub
+elif [ -e ~/.ssh/id_rsa.pub ]; then
+  sshKeyFile=~/.ssh/id_rsa.pub
+else
+  echo "Generating SSH key..."
+  echo | ssh-keygen -N "" -t rsa
+  sshKeyFile=~/.ssh/id_rsa.pub
+fi
+
 if $(sudo virsh list --all | grep "\s${hostname}\s" &> /dev/null); then
   echo "Found an already existing mini-agent instance, please run sno-cleanup.sh to remove it"
   exit 1
@@ -105,7 +115,7 @@ metadata:
 rendezvousIP: ${rendezvousIP}
 EOF
 
-sshKey=$(echo $(cat ~/.ssh/id_rsa.pub))
+sshKey=$(echo $(cat "${sshKeyFile}"))
 
 cat > ${assets_dir}/install-config.yaml << EOF
 apiVersion: v1

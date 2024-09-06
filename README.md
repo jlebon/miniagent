@@ -15,7 +15,6 @@ The current scripts are limited to the SNO topology only.
 * Requires [libvirt](https://libvirt.org/compiling.html)
     * [virt-manager](https://virt-manager.org/) is recommended
 * A valid pull secret
-* An ssh key stored in `~/.ssh/id_rsa.pub`
 
 # Getting started
 
