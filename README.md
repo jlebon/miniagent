@@ -21,7 +21,7 @@ The current scripts are limited to the SNO topology only.
 1. Launch the setup script specifying the required release version and the the pull secret file.
 
 ``` bash
-$ ./sno-setup.sh quay.io/openshift-release-dev/ocp-release:4.14.3-x86_64 ~/config/my-pull-secret
+$ ./sno-setup quay.io/openshift-release-dev/ocp-release:4.14.3-x86_64 ~/config/my-pull-secret
 ```
 
 > **_NOTE:_**  The pull secret file parameter is not required if the `REGISTRY_AUTH_FILE` environment variable is already set
@@ -50,5 +50,5 @@ master-0   Ready    control-plane,master,worker   36m   v1.26.3+b404935
 
 4. Once done, to remove the cluster and cleanup the enviroment, run the cleanup script
 ``` bash
-$ ./sno-cleanup.sh
+$ ./sno-cleanup
 ```

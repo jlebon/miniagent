@@ -5,10 +5,10 @@ source "sno-common.sh"
 
 ### 1. Initial checks 
 if [ $# -lt 1 ]; then
-    echo "./sno-setup.sh <release image> [pull secret path]"
+    echo "./sno-setup <release image> [pull secret path]"
     echo "Usage example:"
-    echo "$ ./sno-setup.sh quay.io/openshift-release-dev/ocp-release:4.14.3-x86_64 # This works if REGISTRY_AUTH_FILE is already set"
-    echo "$ ./sno-setup.sh quay.io/openshift-release-dev/ocp-release:4.14.3-x86_64 ~/config/my-pull-secret"
+    echo "$ ./sno-setup quay.io/openshift-release-dev/ocp-release:4.14.3-x86_64 # This works if REGISTRY_AUTH_FILE is already set"
+    echo "$ ./sno-setup quay.io/openshift-release-dev/ocp-release:4.14.3-x86_64 ~/config/my-pull-secret"
 
     exit 1
 fi
@@ -40,7 +40,7 @@ else
 fi
 
 if [ -d "${assets_dir}" ] || sudo virsh list --all --name | grep -q "${hostname}" || sudo virsh net-list | grep -q ${network}; then
-  echo "Found existing miniagent state, please run sno-cleanup.sh first"
+  echo "Found existing miniagent state, please run sno-cleanup first"
   exit 1
 fi
 
