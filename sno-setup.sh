@@ -174,7 +174,7 @@ sudo virt-install \
   --boot hd,cdrom \
   --import \
   --network network=${network},mac=${rendezvousMAC} \
-  --os-variant generic \
+  --os-variant rhel9-unknown \
   --noautoconsole &
 
 
