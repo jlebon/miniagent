@@ -39,15 +39,15 @@ else
   sshKeyFile=~/.ssh/id_rsa.pub
 fi
 
-if $(sudo virsh list --all | grep "\s${hostname}\s" &> /dev/null); then
-  echo "Found an already existing mini-agent instance, please run sno-cleanup.sh to remove it"
+if [ -d "${assets_dir}" ] || sudo virsh list --all --name | grep -q "${hostname}" || sudo virsh net-list | grep -q ${network}; then
+  echo "Found existing miniagent state, please run sno-cleanup.sh first"
   exit 1
 fi
 
 start=$(date +%s)
 
 ### 2. Create a temporary working folder and make it accessible to the qemu and current user
-mkdir -p ${assets_dir}
+mkdir ${assets_dir}
 
 ### 3. Get the oc binary. 
 ###    This will not only be used to extract the the openshift-install binary itself from the release payload,
@@ -71,10 +71,9 @@ oc adm release extract ${extractOptions}
 ###    - The domain is local to the network and will not propagate upstream.
 ###    - The api DNS record points directly to SNO itself
 ###    - SNO instance is configured with a static IP and MAC (so that they will be reused later when generating install config files)
-if ! $(sudo virsh net-list | grep ${network} &> /dev/null); then
-  echo "* Creating ${network} network"
+echo "* Creating ${network} network"
 
-  cat > ${assets_dir}/${network}.xml << EOF
+cat > ${assets_dir}/${network}.xml << EOF
 <network>
   <name>${network}</name>
   <forward mode="nat">
@@ -100,16 +99,13 @@ if ! $(sudo virsh net-list | grep ${network} &> /dev/null); then
 </network>
 EOF
 
-  sudo virsh net-define ${assets_dir}/${network}.xml
-  sudo virsh net-start ${network}
-fi
+sudo virsh net-define ${assets_dir}/${network}.xml
+sudo virsh net-start ${network}
 
 ###    The guest inside the agent network will not be resolvable from the host,
 ###    and this will be required later by the wait-for command
-if ! $(grep "${apiDomain}" /etc/hosts &> /dev/null); then
-  echo "* Adding entry to /etc/hosts"
-  echo "${rendezvousIP} ${apiDomain} ${consoleDomain} ${oauthDomain}" | sudo tee -a /etc/hosts
-fi
+echo "* Adding entry to /etc/hosts"
+echo "${rendezvousIP} ${apiDomain} ${consoleDomain} ${oauthDomain}" | sudo tee -a /etc/hosts
 
 ### 6. Generate the install-config.yaml and agent-config.yaml.
 ###    These files will be consumed by the openshift-install later.
