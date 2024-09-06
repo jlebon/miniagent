@@ -19,6 +19,16 @@ if [ $# -eq 2 ]; then
   pullSecretFile=$2
 fi
 
+if [ -z "${pullSecretFile}" ]; then
+  pullSecretFile=~/.docker/config.json
+  if [ ! -e "${pullSecretFile}" ]; then
+    read -rsp 'Pull secret: ' pullSecret
+    echo
+    mkdir -p ~/.docker
+    echo "$pullSecret" > ~/.docker/config.json
+  fi
+fi
+
 if [ -e ~/.ssh/id_ed25519.pub ]; then
   sshKeyFile=~/.ssh/id_ed25519.pub
 elif [ -e ~/.ssh/id_rsa.pub ]; then
@@ -50,11 +60,8 @@ fi
 ### 4. Get the openshift-installer
 extractOptions="--command=openshift-install --to=${assets_dir} ${releaseImage}"
 
-pullSecret='{"auths": {"empty": {"auth": "ZW1wdHk6ZW1wdHkK"}}}' ### empty secret
-if [ ! -z ${pullSecretFile} ]; then
-  pullSecret=$(echo $(cat $pullSecretFile)) 
-  extractOptions="--registry-config=${pullSecretFile} ${extractOptions}"
-fi
+pullSecret=$(echo $(cat $pullSecretFile))
+extractOptions="--registry-config=${pullSecretFile} ${extractOptions}"
 
 echo "* Extracting openshift-install from ${releaseImage}"
 oc adm release extract ${extractOptions}
