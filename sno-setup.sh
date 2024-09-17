@@ -19,15 +19,35 @@ if [ $# -eq 2 ]; then
   pullSecretFile=$2
 fi
 
-if $(sudo virsh list --all | grep "\s${hostname}\s" &> /dev/null); then
-  echo "Found an already existing mini-agent instance, please run sno-cleanup.sh to remove it"
+if [ -z "${pullSecretFile}" ]; then
+  pullSecretFile=~/.docker/config.json
+  if [ ! -e "${pullSecretFile}" ]; then
+    read -rsp 'Pull secret: ' pullSecret
+    echo
+    mkdir -p ~/.docker
+    echo "$pullSecret" > ~/.docker/config.json
+  fi
+fi
+
+if [ -e ~/.ssh/id_ed25519.pub ]; then
+  sshKeyFile=~/.ssh/id_ed25519.pub
+elif [ -e ~/.ssh/id_rsa.pub ]; then
+  sshKeyFile=~/.ssh/id_rsa.pub
+else
+  echo "Generating SSH key..."
+  echo | ssh-keygen -N "" -t rsa
+  sshKeyFile=~/.ssh/id_rsa.pub
+fi
+
+if [ -d "${assets_dir}" ] || sudo virsh list --all --name | grep -q "${hostname}" || sudo virsh net-list | grep -q ${network}; then
+  echo "Found existing miniagent state, please run sno-cleanup.sh first"
   exit 1
 fi
 
 start=$(date +%s)
 
 ### 2. Create a temporary working folder and make it accessible to the qemu and current user
-mkdir -p ${assets_dir}
+mkdir ${assets_dir}
 
 ### 3. Get the oc binary. 
 ###    This will not only be used to extract the the openshift-install binary itself from the release payload,
@@ -40,11 +60,8 @@ fi
 ### 4. Get the openshift-installer
 extractOptions="--command=openshift-install --to=${assets_dir} ${releaseImage}"
 
-pullSecret='{"auths": {"empty": {"auth": "ZW1wdHk6ZW1wdHkK"}}}' ### empty secret
-if [ ! -z ${pullSecretFile} ]; then
-  pullSecret=$(echo $(cat $pullSecretFile)) 
-  extractOptions="--registry-config=${pullSecretFile} ${extractOptions}"
-fi
+pullSecret=$(echo $(cat $pullSecretFile))
+extractOptions="--registry-config=${pullSecretFile} ${extractOptions}"
 
 echo "* Extracting openshift-install from ${releaseImage}"
 oc adm release extract ${extractOptions}
@@ -54,10 +71,9 @@ oc adm release extract ${extractOptions}
 ###    - The domain is local to the network and will not propagate upstream.
 ###    - The api DNS record points directly to SNO itself
 ###    - SNO instance is configured with a static IP and MAC (so that they will be reused later when generating install config files)
-if ! $(sudo virsh net-list | grep ${network} &> /dev/null); then
-  echo "* Creating ${network} network"
+echo "* Creating ${network} network"
 
-  cat > ${assets_dir}/${network}.xml << EOF
+cat > ${assets_dir}/${network}.xml << EOF
 <network>
   <name>${network}</name>
   <forward mode="nat">
@@ -83,16 +99,13 @@ if ! $(sudo virsh net-list | grep ${network} &> /dev/null); then
 </network>
 EOF
 
-  sudo virsh net-define ${assets_dir}/${network}.xml
-  sudo virsh net-start ${network}
-fi
+sudo virsh net-define ${assets_dir}/${network}.xml
+sudo virsh net-start ${network}
 
 ###    The guest inside the agent network will not be resolvable from the host,
 ###    and this will be required later by the wait-for command
-if ! $(grep "${apiDomain}" /etc/hosts &> /dev/null); then
-  echo "* Adding entry to /etc/hosts"
-  echo "${rendezvousIP} ${apiDomain} ${consoleDomain} ${oauthDomain}" | sudo tee -a /etc/hosts
-fi
+echo "* Adding entry to /etc/hosts"
+echo "${rendezvousIP} ${apiDomain} ${consoleDomain} ${oauthDomain}" | sudo tee -a /etc/hosts
 
 ### 6. Generate the install-config.yaml and agent-config.yaml.
 ###    These files will be consumed by the openshift-install later.
@@ -105,7 +118,7 @@ metadata:
 rendezvousIP: ${rendezvousIP}
 EOF
 
-sshKey=$(echo $(cat ~/.ssh/id_rsa.pub))
+sshKey=$(echo $(cat "${sshKeyFile}"))
 
 cat > ${assets_dir}/install-config.yaml << EOF
 apiVersion: v1
@@ -151,18 +164,18 @@ sudo virt-install \
   --connect 'qemu:///system' \
   -n ${hostname} \
   --vcpus 8 \
-  --memory 32768 \
+  --memory 16384 \
   --disk size=100,bus=virtio,cache=none,io=native \
   --disk path=${assets_dir}/agent.x86_64.iso,device=cdrom,bus=sata \
   --boot hd,cdrom \
   --import \
   --network network=${network},mac=${rendezvousMAC} \
-  --os-variant generic \
+  --os-variant rhel9-unknown \
   --noautoconsole &
 
 
 ### 9. Check if the agent virtual machine is up and running
-while ! $(sudo virsh list --all | grep "\s${hostname}\s.*running" &> /dev/null); do
+while ! sudo virsh list --all | grep -q "\s${hostname}\s.*running"; do
   echo "Waiting for ${hostname} to start..."
   sleep 5
 done
